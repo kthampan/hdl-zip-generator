@@ -10,6 +10,23 @@
   <button onclick="generateZip()">Download HDL ZIP</button>
 
   <script>
+    // Helper function to get URL param by name
+function getQueryParam(name) {
+  const params = new URLSearchParams(window.location.search);
+  return params.get(name);
+}
+
+// On page load, check for 'hdl' param and fill textarea
+window.onload = () => {
+  const hdlText = getQueryParam('hdl');
+  if (hdlText) {
+    // URL params are encoded, decode them
+    document.getElementById('hdlText').value = decodeURIComponent(hdlText);
+    // Optionally auto-trigger download:
+    generateZip();
+  }
+};
+    
     function generateZip() {
       const hdlContent = document.getElementById("hdlText").value;
       if (!hdlContent.trim()) {
