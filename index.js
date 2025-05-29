@@ -1,49 +1,40 @@
 import express from "express";
-import bodyParser from "body-parser";
 import archiver from "archiver";
-import { PassThrough } from "stream";
-import { Buffer } from "buffer";
+import bodyParser from "body-parser";
+import stream from "stream";
 
 const app = express();
 const port = process.env.PORT || 10000;
 
 app.use(bodyParser.json());
 
-app.post("/generate-zip", async (req, res) => {
-  const { fileName = "file.txt", zipName = "hdl.zip", content = "Sample content" } = req.body;
+app.get("/generate-zip", async (req, res) => {
+  const { fileName = "file.txt", zipName = "hdl.zip", content = "Sample content" } = req.query;
 
   try {
+    const bufferStream = new stream.PassThrough();
     const archive = archiver("zip", { zlib: { level: 9 } });
-    const streamBuffer = new PassThrough();
 
     const chunks = [];
 
-    streamBuffer.on("data", (chunk) => {
-      chunks.push(chunk);
-    });
-
-    archive.on("error", (err) => {
-      throw err;
-    });
-
-    archive.pipe(streamBuffer);
-    archive.append(content, { name: fileName });
-    archive.finalize();
-
-    streamBuffer.on("end", () => {
+    // Capture data chunks as they are streamed
+    bufferStream.on("data", (chunk) => chunks.push(chunk));
+    bufferStream.on("end", () => {
       const zipBuffer = Buffer.concat(chunks);
-      const base64Zip = zipBuffer.toString("base64");
-
+      const zipBase64 = zipBuffer.toString("base64");
       res.json({
-        fileName,
         zipName,
-        zipBase64: base64Zip,
+        zipBase64,
+        message: "ZIP file created and base64 encoded successfully"
       });
     });
 
-  } catch (err) {
-    console.error("ZIP generation failed:", err);
-    res.status(500).json({ error: "Failed to generate ZIP" });
+    archive.pipe(bufferStream);
+    archive.append(content, { name: fileName });
+    archive.finalize();
+  } catch (error) {
+    console.error("ZIP error:", error);
+    res.status(500).json({ error: "Failed to generate ZIP file" });
   }
 });
 
